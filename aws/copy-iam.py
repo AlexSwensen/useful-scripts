@@ -1,4 +1,5 @@
 #! /usr/bin/env python
+from typing import Dict, List
 import boto3
 from rich.console import Console
 
@@ -46,6 +47,23 @@ def get_role_names():
     return roles
 
 
+def get_policies_for_roles(role_names: List[str]) -> Dict[str, List[Dict[str, str]]]:
+    """ Create a mapping of role names and any policies they have attached to them by 
+        paginating over list_attached_role_policies() calls for each role name. 
+        Attached policies will include policy name and ARN.
+    """
+    global profile_name
+    iam = get_boto_session(profile_name).client('iam')
+    policy_map = {}
+    policy_paginator = iam.get_paginator('list_attached_role_policies')
+    for name in role_names:
+        role_policies = []
+        for response in policy_paginator.paginate(RoleName=name):
+            role_policies.extend(response.get('AttachedPolicies'))
+        policy_map.update({name: role_policies})
+    return policy_map
+
+
 def main():
     global profile_name
     profile_name = select_profile()
@@ -66,6 +84,9 @@ def main():
         exit(1)
 
     selected_role = iam.get_role(RoleName=selected_role_string)['Role']
+    
+    attached_policies = get_policies_for_roles([selected_role_string])
+
 
     # switch to another profile
     console.print("[red]" + "Logging in to another profile...")
