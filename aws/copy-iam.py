@@ -27,14 +27,22 @@ def select_profile():
         console.print("Profile not found, exiting.", style="bold black on red")
         exit(1)
         
-def get_role_names():
+        
+def get_roles():
     global profile_name
     iam = get_boto_session(profile_name).client('iam')
     roles = []
     role_paginator = iam.get_paginator('list_roles')
     for resp in role_paginator.paginate():
         for role in resp['Roles']:
-            roles.append(role['RoleName'])
+            roles.append(role)
+    return roles
+
+def get_role_names():
+    role_names = []
+    roles = get_roles()
+    for role in roles:
+        role_names.append(role['RoleName'])
     return roles
 
 
@@ -45,13 +53,13 @@ def main():
     # get list of roles
     roles = get_role_names()
     for role in roles:
-        console.print("[green]" + role)
+        console.print("[green]" + role['RoleName'])
     
     iam = get_boto_session(profile_name).client('iam')
 
     selected_role_string = console.input("Select role: ")
-    if selected_role_string in roles:
-        # selected_role = [role for page in pages for role in page['Roles'] if role['RoleName'] == selected_role_string][0]
+    # check if string is in roles
+    if selected_role_string in [role['RoleName'] for role in roles]:
         console.print("Selected role: " + selected_role_string)
     else:
         console.print("Role not found, exiting.", style="bold black on red")
